@@ -1,0 +1,9 @@
+NATIONAL INSTITUTES OF HEALTH - CLINICAL POLICY PROTOCOL REFERENCE
+DOCUMENT ID: NIH-REF-2026-T1
+TOPIC: HYPERTENSION FIRST-LINE MANAGEMENT STRATEGY
+
+For adult patients diagnosed with Stage 1 Hypertension (blood pressure ranging between 130-139 mm Hg systolic or 80-89 mm Hg diastolic), the primary intervention strategy must emphasize structured lifestyle modifications. Lifestyle modifications include reducing sodium intake to under 1,500 mg per day, increasing dietary potassium, and participating in at least 150 minutes of moderate-intensity aerobic physical activity per week.
+
+If lifestyle modifications fail to lower blood pressure targets below 130/80 mm Hg within a 3-month evaluation cycle, first-line pharmacological treatment should be initiated. Recommended first-line medications include Angiotensin-Converting Enzyme (ACE) inhibitors, Angiotensin II Receptor Blockers (ARBs), Calcium Channel Blockers (CCBs), or thiazide diuretics. 
+
+CONTRAINDICATION WARNING: ACE inhibitors and ARBs must never be prescribed concurrently due to an increased risk of severe renal impairment, hyperkalemia, and hypotension. For patients with a history of bilateral renal artery stenosis, ACE inhibitors are strictly contraindicated. Ensure serum creatinine and potassium levels are monitored within 1 to 2 weeks of initiating therapy.
