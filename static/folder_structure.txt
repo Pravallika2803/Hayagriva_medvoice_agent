@@ -1,0 +1,12 @@
+healthcare_voice_agent/
+│
+├── models/
+│   └── mistral-7b-instruct-v0.2.Q4_K_M.gguf   <-- Put your downloaded LLM file here
+│
+├── uploaded_docs/                              <-- Fast flips/uploads land here (PDFs, Docx, Txt)
+│
+├── audio_cache/                                <-- Temporary audio processing zone (Auto-cleaned)
+│
+├── requirements.txt                            <-- List of all dependencies
+│
+└── main.py                                     <-- Paste the modified full code here
