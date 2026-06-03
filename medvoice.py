@@ -210,25 +210,13 @@ def sanitize_input(text: str) -> str:
     return clean.strip()
 
 def generate_f5_tts(text: str) -> str:
-    """
-    Generate natural voice audio from response text using StyleTTS 2 in-memory.
-    Uses rigorous alphanumeric text normalization and type-safe array chunking.
-    """
     if not text.strip():
         return None
 
-    # --- RIGOROUS TEXT PRE-CLEANING ---
-    # 1. Clean systemic formatting and markdown strings
     clean_text = text.replace("\n", " ").replace("*", " ").replace("`", " ")
-    
-    # 2. Swap pipe symbols for clean commas so StyleTTS handles phrasing properly
     clean_text = clean_text.replace("|", ", ").replace("---", " ")
-    
-    # 3. Standardize file name extensions into readable characters
     clean_text = re.sub(r'\berpdf\b', 'e-p-d-f', clean_text, flags=re.IGNORECASE)
     clean_text = re.sub(r'\bpdf\b', 'p-d-f', clean_text, flags=re.IGNORECASE)
-    
-    # 4. Collapse running space layouts
     clean_text = re.sub(r'\s+', ' ', clean_text).strip()
 
     output_filename = f"{uuid.uuid4()}.wav"
@@ -236,10 +224,12 @@ def generate_f5_tts(text: str) -> str:
 
     try:
         os.makedirs(TTS_DIR, exist_ok=True)
+        # Tokenize sentences
+        all_sentences = sent_tokenize(clean_text)
         
-        from nltk.tokenize import sent_tokenize
-        sentences = sent_tokenize(clean_text)
-        logger.info(f"Splitting normalized text into {len(sentences)} sentences.")
+        # --- SPEED PATCH: Only process the first 2 sentences for instant playback ---
+        sentences = all_sentences[:2] 
+        logger.info(f"Speed Optimization Active: Processing top {len(sentences)} chunks.")
 
         combined_audio = []
         sample_rate = 24000
@@ -248,45 +238,34 @@ def generate_f5_tts(text: str) -> str:
             sentence = sentence.strip()
             if not sentence:
                 continue
-                
-            logger.info(f"Processing chunk {idx + 1}/{len(sentences)}: '{sentence[:40]}...'")
 
-            # Execute raw model inference pass
+            # --- SPEED PATCH: Dropped diffusion_steps to 3 ---
             audio_chunk = styletts_engine.inference(
                 text=sentence,
                 target_voice_path="voice_reference/hayagriva_ref.wav",
-                diffusion_steps=4, # Higher clarity
-                alpha=0.3,          # Determines style blend
-                beta=0.7,           # Increases rhythmic expressiveness
+                diffusion_steps=3,  
+                alpha=0.3,
+                beta=0.7,
                 output_sample_rate=sample_rate
             )
             
-            # Ensure audio data is in a valid 1D NumPy array format
             if hasattr(audio_chunk, "cpu"):
                 audio_chunk = audio_chunk.cpu().numpy()
             audio_chunk = np.squeeze(audio_chunk)
             
             combined_audio.append(audio_chunk)
-            
-            # Match data type explicitly to protect audio amplitude range
             silence_buffer = np.zeros(int(0.15 * sample_rate), dtype=audio_chunk.dtype)
             combined_audio.append(silence_buffer)
 
         if not combined_audio:
             return None
 
-        # Securely bundle all matching data sequences together
         final_audio_arr = np.concatenate(combined_audio, axis=0)
-
-        # Write to disk file cache safely
         sf.write(output_path, final_audio_arr, sample_rate)
-        logger.info(f"Audio file successfully rendered with sound tracking data: {output_filename}")
         return output_filename
-
     except Exception as e:
-        logger.error(f"StyleTTS 2 generation failed: {str(e)}")
+        logger.error(f"StyleTTS 2 optimized generation failed: {str(e)}")
         return None
-
 def transcribe_audio(audio_path):
 
     segments, info = whisper_model.transcribe(
@@ -469,26 +448,23 @@ async def upload_knowledge_document(file: UploadFile = File(...)):
     except Exception as e:
         raise HTTPException(status_code=500, detail=str(e))
 
+# --- Updated Text Chat Endpoint (Now blazing fast) ---
 @app.post("/api/v2/agent/text-chat", tags=["Agent Core Interaction Stack"])
 async def handle_text_interaction(payload: TextChatRequest):
     try:
+        # 1. Get the LLM/RAG response instantly
         execution_packet = await process_intent_routing_workflow(
             payload.text_query
         )
-
-        audio_file = generate_f5_tts(
-            execution_packet["response"]
-            )
-
-        execution_packet["audio_url"] = (
-            f"/tts/{audio_file}"
-            if audio_file else None
-        )
-
+        
+        # 2. Return it to the frontend immediately without waiting for TTS
         return JSONResponse(execution_packet)
     except Exception as e:
         return JSONResponse(status_code=500, content={"error": str(e)})
 
+# --- New Dedicated TTS Generation Endpoint ---
+class TTSGenerationRequest(BaseModel):
+    text: str
 @app.post("/api/v2/agent/voice-chat", tags=["Agent Core Interaction Stack"])
 async def handle_voice_interaction(file: UploadFile = File(...)):
     try:
@@ -496,24 +472,29 @@ async def handle_voice_interaction(file: UploadFile = File(...)):
         with open(temp_audio_path, "wb") as buffer:
             buffer.write(await file.read())
             
-        transcript = await anyio.to_thread.run_sync(transcribe_audio,temp_audio_path)
-        pipeline_output_packet = (await process_intent_routing_workflow(transcript))       
+        transcript = await anyio.to_thread.run_sync(transcribe_audio, temp_audio_path)
+        pipeline_output_packet = await process_intent_routing_workflow(transcript)       
         pipeline_output_packet["transcript"] = transcript
-        audio_file = generate_f5_tts(
-            pipeline_output_packet["response"]
-        )
-
-        pipeline_output_packet["audio_url"] = (
-            f"/tts/{audio_file}"
-            if audio_file else None
-        )
         
         if os.path.exists(temp_audio_path):
             os.remove(temp_audio_path)
             
         return JSONResponse(pipeline_output_packet)
     except Exception as e:
-        raise HTTPException(status_code=500, detail=str(e))
+        return JSONResponse(status_code=500, content={"error": str(e)})
+@app.post("/api/v2/agent/generate-audio", tags=["Agent Core Interaction Stack"])
+async def handle_tts_generation(payload: TTSGenerationRequest):
+    try:
+        if not payload.text.strip():
+            raise HTTPException(status_code=400, detail="Text cannot be empty")
+            
+        # Run the heavy audio processing in a background worker thread
+        audio_file = await anyio.to_thread.run_sync(generate_f5_tts, payload.text)
+        
+        audio_url = f"/tts/{audio_file}" if audio_file else None
+        return JSONResponse({"audio_url": audio_url})
+    except Exception as e:
+        return JSONResponse(status_code=500, content={"error": str(e)})
 
 if __name__ == "__main__":
     uvicorn.run("medvoice:app", host="127.0.0.1", port=8000, reload=True)
