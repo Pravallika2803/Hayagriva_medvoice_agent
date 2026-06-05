@@ -1,0 +1,11 @@
+audio_cache/
+tts_cache/
+vector_db/
+uploaded_docs/
+models/*.gguf
+models/*.bin
+*.db
+*.sqlite
+__pycache__/
+*.pyc
+.env
