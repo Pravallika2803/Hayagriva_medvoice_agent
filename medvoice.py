@@ -155,7 +155,7 @@ logger.info(
 )
 
 # --- GLOBAL MODEL INITIALIZATION ---
-LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", "models/Mistral-7B-Instruct-v03-IQ4_NL.gguf")
+LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", "models/Mistral-7B-Instruct.gguf")
 
 # --- GLOBAL MODEL INITIALIZATION ---
 LLM_MODEL_PATH = os.getenv("LLM_MODEL_PATH", "models/Mistral-7B-Instruct-v03-IQ4_NL.gguf")
